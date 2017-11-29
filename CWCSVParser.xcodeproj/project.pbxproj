@@ -13,6 +13,7 @@
 		8F4CB9931FC5E4D8009C81E9 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8F4CB9911FC5E4D8009C81E9 /* Main.storyboard */; };
 		8F4CB99F1FC5E4D8009C81E9 /* CWCSVParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F4CB99E1FC5E4D8009C81E9 /* CWCSVParserTests.swift */; };
 		8F4CB9AA1FC5E4D9009C81E9 /* CWCSVParserUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F4CB9A91FC5E4D9009C81E9 /* CWCSVParserUITests.swift */; };
+		8F4CB9B91FC5E4F7009C81E9 /* CWCSVParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F4CB9B81FC5E4F7009C81E9 /* CWCSVParser.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -46,6 +47,7 @@
 		8F4CB9A51FC5E4D9009C81E9 /* CWCSVParserUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CWCSVParserUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F4CB9A91FC5E4D9009C81E9 /* CWCSVParserUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CWCSVParserUITests.swift; sourceTree = "<group>"; };
 		8F4CB9AB1FC5E4D9009C81E9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		8F4CB9B81FC5E4F7009C81E9 /* CWCSVParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CWCSVParser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -98,6 +100,7 @@
 			children = (
 				8F4CB98B1FC5E4D8009C81E9 /* AppDelegate.swift */,
 				8F4CB98D1FC5E4D8009C81E9 /* ViewController.swift */,
+				8F4CB9B71FC5E4E1009C81E9 /* Parser */,
 				8F4CB98F1FC5E4D8009C81E9 /* Assets.xcassets */,
 				8F4CB9911FC5E4D8009C81E9 /* Main.storyboard */,
 				8F4CB9941FC5E4D8009C81E9 /* Info.plist */,
@@ -122,6 +125,14 @@
 				8F4CB9AB1FC5E4D9009C81E9 /* Info.plist */,
 			);
 			path = CWCSVParserUITests;
+			sourceTree = "<group>";
+		};
+		8F4CB9B71FC5E4E1009C81E9 /* Parser */ = {
+			isa = PBXGroup;
+			children = (
+				8F4CB9B81FC5E4F7009C81E9 /* CWCSVParser.swift */,
+			);
+			path = Parser;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -258,6 +269,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F4CB98E1FC5E4D8009C81E9 /* ViewController.swift in Sources */,
+				8F4CB9B91FC5E4F7009C81E9 /* CWCSVParser.swift in Sources */,
 				8F4CB98C1FC5E4D8009C81E9 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
