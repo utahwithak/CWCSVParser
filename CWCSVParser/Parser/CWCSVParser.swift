@@ -42,6 +42,8 @@ enum CSVError: LocalizedError {
     /// all of the lines in the file
     /// must have the same number of fields. If they do not, parsing is aborted and this error is returned.
     case incorrectNumberOfFields
+
+    case invalidDelimiter
 }
 
 
@@ -98,14 +100,11 @@ enum CSVError: LocalizedError {
 
 final class CSVParser: NSObject {
 
+    static func parse(inputStream: InputStream, options: CSVParserOptions, delimiter: Character) throws -> [[String]] {
 
-    static func parse(inputStream: InputStream, options: CSVParserOptions, delimiter: Character) throws -> [Any] {
+        let parser = CSVParser(stream: inputStream, delimiter: delimiter)
 
-        guard let parser = CSVParser(stream: inputStream, delimiter: delimiter) else {
-            return []
-        }
-
-        let aggregator: Aggregator = options.contains(.usesFirstLineAsKeys) ? CSVKeyedAggregator() : CSVAggregator()
+        let aggregator = CSVAggregator()
         parser.delegate = aggregator
 
         parser.recognizesBackslashesAsEscapes = options.contains(.recognizesBackslashesAsEscapes)
@@ -119,7 +118,31 @@ final class CSVParser: NSObject {
         if let error = aggregator.error {
             throw error
         } else {
-            return aggregator.values
+            return aggregator.lines
+        }
+
+
+    }
+
+    static func parseKeyed(inputStream: InputStream, options: CSVParserOptions, delimiter: Character) throws -> [[String:String]] {
+
+        let parser = CSVParser(stream: inputStream, delimiter: delimiter)
+
+        let aggregator = CSVKeyedAggregator()
+        parser.delegate = aggregator
+
+        parser.recognizesBackslashesAsEscapes = options.contains(.recognizesBackslashesAsEscapes)
+        parser.sanitizesFields = options.contains(.sanitizesFields)
+        parser.recognizesComments = options.contains(.recognizesComments)
+        parser.trimsWhitespace = options.contains(.trimsWhitespace)
+        parser.recognizesLeadingEqualSign = options.contains(.recognizesLeadingEqualSign)
+
+        parser.parse()
+
+        if let error = aggregator.error {
+            throw error
+        } else {
+            return aggregator.lines
         }
 
     }
@@ -139,11 +162,7 @@ final class CSVParser: NSObject {
     ///  If `true`, then the parser will allow special characters (delimiter, newline, quote, etc)
     ///  - Note: default value is `false`
     ///  - Warning: Do not mutate this property after parsing has begun
-    public var recognizesBackslashesAsEscapes = false {
-        willSet {
-
-        }
-    }
+    public var recognizesBackslashesAsEscapes = false
 
     ///  If `true`, then the parser will interpret any field that begins with an octothorpe as a comment.
     ///  Comments are terminated using an unescaped newline character.
@@ -164,33 +183,18 @@ final class CSVParser: NSObject {
     /// Encoding used in the parsing
     public private(set) var streamEncoding: String.Encoding = .utf8
 
-    /// An initializer to parse a CSV string
-    /// Internally it calls the designated initializer and provides a stream of the UTF8 representation of the string as well as the comma delimiter.
-    /// - Parameter csv: String to parse
-    public convenience init?(_ csv: String) {
-        self.init(csv, delimiter: COMMA)
-    }
 
     /// An initializer to parse a delimited string
     /// Internally it calls the designated initializer and provides a stream of the UTF8 representation of the string as well as the provided delimiter.
     /// - Parameters:
     ///   - delimitedString: String to parse
     ///   - delimiter: he delimiter character to be used when parsing the string. Must not be the double quote or newline character
-    public convenience init?(_ delimitedString: String, delimiter: Character) {
+    public convenience init?(_ delimitedString: String, delimiter: Character = COMMA, options: CSVParserOptions = []) {
         guard let data = delimitedString.data(using: .utf8) else {
             return nil
         }
         let stream = InputStream(data: data)
-        self.init(stream: stream, delimiter: delimiter)
-    }
-
-
-    /// An initializer to parse the contents of URL, Internally it calls the designated initializer and provides a stream to the URL as well as the comma delimiter.
-    /// The parser attempts to infer the encoding from the stream.
-    ///
-    /// - Parameter url: `URL` path to the CSV file.
-    public convenience init?(contentsOf url: URL) {
-        self.init(contentsOf: url, delimiter: COMMA)
+        self.init(stream: stream, delimiter: delimiter, options: options)
     }
 
     /// An initializer to parse the contents of URL
@@ -200,11 +204,11 @@ final class CSVParser: NSObject {
     /// - Parameters:
     ///   - url: The `URL` to the delimited file
     ///   - delimiter: The delimiter character to be used when parsing the string. Must not be the double quote or newline character
-    public convenience init?(contentsOf url: URL, delimiter: Character) {
+    public convenience init?(contentsOf url: URL, delimiter: Character = COMMA, options: CSVParserOptions = []) {
         guard let stream = InputStream(url: url) else {
             return nil
         }
-        self.init(stream: stream, delimiter: delimiter)
+        self.init(stream: stream, delimiter: delimiter, options: options)
     }
 
     /// Designated initializer, parses the stream using delimiter.
@@ -212,8 +216,7 @@ final class CSVParser: NSObject {
     /// - Parameters:
     ///   - stream: The `InputStream` from which bytes will be read and parsed
     ///   - delimiter: he delimiter character to be used when parsing the stream. Must not be the double quote or newline character
-    init?(stream: InputStream, delimiter: Character, encoding: String.Encoding? = nil) {
-        guard delimiter != "\n" && delimiter != "\"" else { return nil }
+    init(stream: InputStream, delimiter: Character, encoding: String.Encoding? = nil, options: CSVParserOptions = []) {
 
         self.stream = stream
         stream.open()
@@ -223,6 +226,13 @@ final class CSVParser: NSObject {
         var invalidSet = CharacterSet.newlines
         invalidSet.insert(charactersIn: "\(DOUBLE_QUOTE)\(delimiter)")
         validFieldCharacters = invalidSet.inverted
+
+        recognizesBackslashesAsEscapes = options.contains(.recognizesBackslashesAsEscapes)
+        sanitizesFields = options.contains(.sanitizesFields)
+        recognizesComments = options.contains(.recognizesComments)
+        trimsWhitespace = options.contains(.trimsWhitespace)
+        recognizesLeadingEqualSign = options.contains(.recognizesLeadingEqualSign)
+
 
         super.init()
 
@@ -239,8 +249,15 @@ final class CSVParser: NSObject {
     }
 
     public func parse() {
+
+
         autoreleasepool {
             delegate?.parserDidBeginDocument?(self)
+
+            guard delimiter != "\n" && delimiter != "\"" else {
+                delegate?.parser?(self, didFailWithError: CSVError.invalidDelimiter)
+                return
+            }
 
             while parseRecord() { }
 
@@ -263,10 +280,22 @@ final class CSVParser: NSObject {
     // MARK: - Private
     private let stream: InputStream
     private var stringBuffer = Data()
-    private var string = ""
+
+    var length = 0
+
+    private var string = "" {
+        didSet {
+            nextChar = nil
+            length = string.count
+        }
+    }
     private let validFieldCharacters: CharacterSet
 
-    private var nextIndex = 0
+    private var nextIndex = 0 {
+        didSet {
+            nextChar = nil
+        }
+    }
 
     private var fieldIndex = 0
     private var fieldStart: String.Index?
@@ -274,11 +303,13 @@ final class CSVParser: NSObject {
 
     private var delimiter: Character
 
+    private var nextChar: Character?
+
     private var error: Error?
 
     private var currentRecord = 0
 
-    private var canceled = false
+    public private(set) var canceled = false
 
     private func sniffEncoding() {
 
@@ -337,33 +368,38 @@ final class CSVParser: NSObject {
         streamEncoding = encoding;
     }
 
-    private func loadMoreIfNecessary() {
-        let length = string.count
-        let reloadPortion = max(length / 3, 10)
+    private var tmpBuffer = [UInt8](repeating: 0, count: CHUNK_SIZE)
 
-        if nextIndex + reloadPortion > length && stream.hasBytesAvailable {
-            var buffer = [UInt8](repeating: 0, count: CHUNK_SIZE)
-            let readLength = stream.read(&buffer, maxLength: CHUNK_SIZE)
+    private func loadMoreIfNecessary() {
+
+        if nextIndex + 10 > length && stream.hasBytesAvailable {
+            let readLength = stream.read(&tmpBuffer, maxLength: CHUNK_SIZE)
 
             if readLength > 0 {
-                stringBuffer.append(contentsOf: buffer[0..<readLength])
-            }
-        }
+                stringBuffer.append(contentsOf: tmpBuffer[0..<readLength])
+                totalBytesRead += readLength
 
-        if !stringBuffer.isEmpty {
+                if !stringBuffer.isEmpty {
 
-            var readLength = stringBuffer.count
-            while readLength > 0 {
+                    var readLength = stringBuffer.count
+                    while readLength > 0 {
 
-                if let readString = String(bytes: stringBuffer[0..<readLength], encoding: streamEncoding) {
-                    string.append(readString)
-                    break
-                } else {
-                    readLength -= 1
+                        if let readString = String(bytes: stringBuffer[0..<readLength], encoding: streamEncoding) {
+                            string.append(readString)
+                            break
+                        } else {
+                            readLength -= 1
+                        }
+                    }
+                    if readLength == stringBuffer.count {
+                        stringBuffer.removeAll(keepingCapacity: true)
+                    } else {
+                        stringBuffer.removeSubrange(0..<readLength)
+                    }
                 }
             }
-            stringBuffer.removeSubrange(0..<readLength)
         }
+
     }
 
     private func advance() {
@@ -371,13 +407,25 @@ final class CSVParser: NSObject {
         nextIndex += 1
     }
 
+
     private func peekCharacter(after: Int = 0) -> Character {
         loadMoreIfNecessary()
-        if (nextIndex + after) >= string.count {
+        if (nextIndex + after) >= length {
             return NULLCHAR
         }
-
-        return string[string.index(string.startIndex, offsetBy: nextIndex + after)]
+        switch after {
+        case 0:
+            if let char = nextChar {
+                return char
+            }
+            nextChar = string[string.index(string.startIndex, offsetBy: nextIndex)]
+            if nextChar == NULLCHAR {
+                
+            }
+            return nextChar!
+        default:
+            return string[string.index(string.startIndex, offsetBy: nextIndex + after)]
+        }
     }
 
     private func parseRecord() -> Bool {
@@ -643,11 +691,6 @@ public struct CSVParserOptions: OptionSet {
     /// Trims whitespace around a field.
     public static let trimsWhitespace = CSVParserOptions(rawValue: 1 << 3)
 
-    ///  When you specify this option, instead of getting an Array of Arrays of Strings,
-    ///  you get an Array of @c CHCSVOrderedDictionary instances.
-    ///  If the file only contains a single line, then an empty array is returned.
-    public static let usesFirstLineAsKeys = CSVParserOptions(rawValue: 1 << 4)
-
     /// Some delimited files contain fields that begin with a leading equal sign,
     /// to indicate that the contents should not be summarized or re-interpreted.
     /// (For example, to remove insignificant digits)
@@ -663,15 +706,15 @@ extension String {
         return components(separatedBy: COMMA)
     }
 
-    public func CSVComponents( with options: CSVParserOptions) -> [Any]{
+    public func CSVComponents( with options: CSVParserOptions) -> [[String]] {
         return (try? components(separatedBy: COMMA, options: options)) ?? []
     }
 
     public func components(separatedBy delimiter: Character) -> [[String]] {
-        return ((try? components(separatedBy:delimiter, options:[])) as? [[String]]) ?? []
+        return (try? components(separatedBy:delimiter, options:[])) ?? []
     }
 
-    public func components(separatedBy delimiter: Character,  options: CSVParserOptions) throws -> [Any] {
+    public func components(separatedBy delimiter: Character,  options: CSVParserOptions) throws -> [[String]] {
         guard let csvData = data(using: .utf8) else {
             return []
         }
@@ -679,20 +722,19 @@ extension String {
 
         return try CSVParser.parse(inputStream: stream, options: options, delimiter: delimiter)
     }
-}
 
+    public func keyedComponents(separatedBy delimiter: Character,  options: CSVParserOptions) throws -> [[String: String]] {
+        guard let csvData = data(using: .utf8) else {
+            return []
+        }
+        let stream = InputStream(data: csvData)
 
-protocol Aggregator: ParserDelegate {
-    var error: Error? { get }
-    var values: [Any] { get }
-}
-
-fileprivate class CSVAggregator: Aggregator {
-    var lines = [[String]]()
-
-    var values: [Any] {
-        return lines
+        return try CSVParser.parseKeyed(inputStream: stream, options: options, delimiter: delimiter)
     }
+}
+
+fileprivate class CSVAggregator: ParserDelegate {
+    var lines = [[String]]()
 
     var currentLine = [String]()
     var error: Error?
@@ -711,10 +753,8 @@ fileprivate class CSVAggregator: Aggregator {
     }
 }
 
-fileprivate class CSVKeyedAggregator: Aggregator {
-    var values: [Any] {
-        return lines
-    }
+fileprivate class CSVKeyedAggregator: ParserDelegate {
+
     var lines = [[String: String]]()
     var firstLine = [String]()
     var currentLine = [String]()
