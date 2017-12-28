@@ -34,7 +34,7 @@ fileprivate let EQUAL: Character = "="
 fileprivate let BACKSLASH: Character = "\\"
 fileprivate let NULLCHAR: Character = "\0"
 
-enum CSVError: LocalizedError {
+enum CSVError: Int, CustomNSError {
     /// Indicates that a delimited file is incorrectly formatted.
     /// For example, perhaps a double quote is in the wrong position.
     case invalidFormat
@@ -44,6 +44,29 @@ enum CSVError: LocalizedError {
     case incorrectNumberOfFields
 
     case invalidDelimiter
+
+
+    public static var errorDomain: String {
+        return "com.datumapps.CSVError"
+    }
+
+    var errorCode: Int {
+        return self.rawValue
+    }
+
+    // To make it work when casting to NSError's
+    var errorUserInfo: [String: Any] {
+        return [NSLocalizedDescriptionKey: localizedDescription]
+    }
+
+    var localizedDescription: String {
+        switch self {
+        case .invalidFormat: return NSLocalizedString("Invalid CSV Format", bundle: Bundle(for: CSVParser.self), comment: "invalid format error description")
+        case .incorrectNumberOfFields: return NSLocalizedString("Keyed Field miss match", bundle: Bundle(for: CSVParser.self), comment: "Unknown error description")
+        case .invalidDelimiter: return NSLocalizedString("Missing Delimiter", bundle: Bundle(for: CSVParser.self), comment: "invalid CSV Missing Bundle")
+        }
+    }
+
 }
 
 
