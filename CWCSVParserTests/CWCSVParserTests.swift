@@ -9,31 +9,31 @@
 import XCTest
 @testable import CWCSVParser
 
-fileprivate let EMPTY = ""
-fileprivate let COMMA = ","
-fileprivate let SEMICOLON = ";"
-fileprivate let DOUBLEQUOTE = "\""
-fileprivate let NEWLINE = "\n"
-fileprivate let TAB = "\t"
-fileprivate let SPACE = " "
-fileprivate let BACKSLASH = "\\"
-fileprivate let OCTOTHORPE = "#"
-fileprivate let EQUAL = "="
+private let EMPTY = ""
+private let COMMA = ","
+private let SEMICOLON = ";"
+private let DOUBLEQUOTE = "\""
+private let NEWLINE = "\n"
+private let TAB = "\t"
+private let SPACE = " "
+private let BACKSLASH = "\\"
+private let OCTOTHORPE = "#"
+private let EQUAL = "="
 
-fileprivate let FIELD1 = "field1"
-fileprivate let FIELD2 = "field2"
-fileprivate let FIELD3 = "field3"
-fileprivate let UTF8FIELD4 = "ḟīễłđ➃"
+private let FIELD1 = "field1"
+private let FIELD2 = "field2"
+private let FIELD3 = "field3"
+private let UTF8FIELD4 = "ḟīễłđ➃"
 
-fileprivate let QUOTED_FIELD1 = "\(DOUBLEQUOTE)\(FIELD1)\(DOUBLEQUOTE)"
-fileprivate let QUOTED_FIELD2 = "\(DOUBLEQUOTE)\(FIELD2)\(DOUBLEQUOTE)"
-fileprivate let QUOTED_FIELD3 = "\(DOUBLEQUOTE)\(FIELD3)\(DOUBLEQUOTE)"
+private let QUOTED_FIELD1 = "\(DOUBLEQUOTE)\(FIELD1)\(DOUBLEQUOTE)"
+private let QUOTED_FIELD2 = "\(DOUBLEQUOTE)\(FIELD2)\(DOUBLEQUOTE)"
+private let QUOTED_FIELD3 = "\(DOUBLEQUOTE)\(FIELD3)\(DOUBLEQUOTE)"
 
-fileprivate let MULTILINE_FIELD = "\(FIELD1)\(NEWLINE)\(FIELD2)"
+private let MULTILINE_FIELD = "\(FIELD1)\(NEWLINE)\(FIELD2)"
 
 class CWCSVParserTests: XCTestCase {
 
-    private func TEST_ARRAYS(_ actual: [Any], _ expected: [Any])  {
+    private func TEST_ARRAYS(_ actual: [Any], _ expected: [Any]) {
 
         XCTAssertEqual(actual.count, expected.count, "incorrect number of records")
 
@@ -49,7 +49,7 @@ class CWCSVParserTests: XCTestCase {
                     for field in 0..<actualRow.count {
                         let actualField = actualRow[field]
                         let expectedField = expectedRow[field]
-                        XCTAssertEqual(actualField as? NSObject, expectedField as? NSObject,"mismatched field \(field) on line \(record + 1)")
+                        XCTAssertEqual(actualField as? NSObject, expectedField as? NSObject, "mismatched field \(field) on line \(record + 1)")
 
                         if  actualField as? NSObject != nil, actualField as? NSObject != expectedField as? NSObject {
                             print("expected:\(expectedField) got: \(actualField)")
@@ -66,12 +66,11 @@ class CWCSVParserTests: XCTestCase {
 
     }
 
-
     override func setUp() {
         super.setUp()
         // Put setup code here. This method is called before the invocation of each test method in the class.
     }
-    
+
     override func tearDown() {
         // Put teardown code here. This method is called after the invocation of each test method in the class.
         super.tearDown()
@@ -93,7 +92,7 @@ class CWCSVParserTests: XCTestCase {
         let csv = FIELD1 + COMMA + EQUAL + QUOTED_FIELD2 + COMMA + EQUAL + QUOTED_FIELD3
         let expected = [[FIELD1, FIELD2, FIELD3]]
 
-        TEST(csv, expected, [.recognizesLeadingEqualSign , .sanitizesFields])
+        TEST(csv, expected, [.recognizesLeadingEqualSign, .sanitizesFields])
     }
 
     func testLeadingEqual() {
@@ -105,7 +104,7 @@ class CWCSVParserTests: XCTestCase {
 
     func testEmoji() {
         let csv = "1️⃣,2️⃣,3️⃣,4️⃣,5️⃣" + NEWLINE + "6️⃣,7️⃣,8️⃣,9️⃣,0️⃣"
-        let expected = [["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣"],["6️⃣","7️⃣","8️⃣","9️⃣","0️⃣"]]
+        let expected = [["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"], ["6️⃣", "7️⃣", "8️⃣", "9️⃣", "0️⃣"]]
         TEST(csv, expected)
     }
 
@@ -132,7 +131,6 @@ class CWCSVParserTests: XCTestCase {
         let expected = [[FIELD1]]
         TEST(csv, expected, .recognizesComments)
     }
-
 
     func testEmptyFields() {
         let csv = COMMA + COMMA
@@ -223,6 +221,5 @@ class CWCSVParserTests: XCTestCase {
         let expected = [[FIELD1], [OCTOTHORPE + FIELD2]]
         TEST(csv, expected)
     }
-
 
 }
